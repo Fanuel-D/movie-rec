@@ -9,7 +9,6 @@ from nltk.corpus import stopwords
 from collections import Counter
 
 
-
 csv_path = 'movie.csv'
 
 def clean_text(text):
@@ -17,7 +16,6 @@ def clean_text(text):
     if pd.isna(text):
         return ""
     
-    # Convert to lowercase
     text = str(text).lower()
     text = re.sub(r'[^a-zA-Z\s]', '', text)
     tokens = nltk.word_tokenize(text)
@@ -32,19 +30,16 @@ def load_and_preprocess_data(csv_path):
     """Load movie data and preprocess it"""
 
     df = pd.read_csv(csv_path)
-    title_col = "original_title"
+    
+    title_alternatives = ['title', 'name', 'original_title']
+    title_col = 'original_title'
+    
+
     df['title'] = df[title_col]
-    title_to_id = dict(zip(df['title'], df['id']))
-    id_to_title = dict(zip(df['id'], df['title']))
-
-    df['cleaned_overview'] = df['overview'].apply(clean_text)
     
+    df = df[df['overview'].notna()]
 
-    df['original_overview'] = df['overview']
-    
-    df = df[df['cleaned_overview'].str.len() > 0]
-
-    #save to pickle files 
+    print(f"Length of df is {len(df)}")
 
     f = open("df.pkl", 'wb')
     pickle.dump(df, f )
