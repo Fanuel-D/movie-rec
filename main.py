@@ -17,12 +17,95 @@ from sklearn.metrics.pairwise import cosine_similarity
 import os
 
 
+HIGHLIGHT_COLORS = [
+    Fore.RED,
+    Fore.GREEN,
+    Fore.BLUE,
+    Fore.MAGENTA,
+    Fore.CYAN
+]
+
+
 pickle_dir = './pickles'
 
 csv_path = 'movie.csv'
 
+def get_title_from_id(movie_id, df):
+
+    movie_row = df[df['id'] == movie_id]
+    if len(movie_row) > 0:
+        return movie_row['title'].iloc[0]
+    return None
+
+def highlight_words_in_text(text, words_to_highlight):
+
+    text = str(text)
+    
+    word_pattern = r'\b(?:' + '|'.join(re.escape(word) for word in words_to_highlight) + r')\b'
+    
+    def colorize(match):
+        word = match.group(0)
+        word_index = next((i for i, w in enumerate(words_to_highlight) if w.lower() == word.lower()), 0)
+        color_index = word_index % len(HIGHLIGHT_COLORS)
+        return f"{HIGHLIGHT_COLORS[color_index]}{word}{Style.RESET_ALL}"
+    highlighted_text = re.sub(word_pattern, colorize, text, flags=re.IGNORECASE)
+    
+    return highlighted_text
+
+
+
+def print_recommendations(results):
+    """Print recommendations with highlighted text"""
+    input_movie = results['input_movie']
+    input_overview = results['input_overview']
+    
+    print(f"\n{'='*80}")
+    print(f"INPUT MOVIE: {Fore.YELLOW}{input_movie}{Style.RESET_ALL}")
+    print(f"Overview: {input_overview}")
+    print(f"{'='*80}\n")
+    
+    print(f"Top 5 similar movies to '{input_movie}':")
+    
+    for i, rec in enumerate(results['recommendations'], 1):
+        title = rec['title']
+        if len(title) > 50:
+            title = title[:47] + "..."
+            
+        highlighted_overview = highlight_words_in_text(rec['overview'], rec['common_words'])
+        
+        print(f"\n{'-'*80}")
+        print(f"{i}. {Fore.CYAN}{title}{Style.RESET_ALL} (Similarity: {Fore.YELLOW}{rec['similarity']:.4f}{Style.RESET_ALL})")
+     
+        if rec['common_words']:
+            print("\nKey similar words:")
+            for j, word in enumerate(rec['common_words']):
+                color_index = j % len(HIGHLIGHT_COLORS)
+                print(f"{HIGHLIGHT_COLORS[color_index]}{word}{Style.RESET_ALL}", end=" ")
+            print("\n")
+        
+
+        print("Overview:")
+        print(highlighted_overview)
+        print(f"{'-'*80}")
+
+
+
+def find_common_important_words(movie1_idx, movie2_idx, tfidf_matrix, words_dict, top_n=10):
+    """Find common important words between two movies"""
+
+
+    movie1_words = set(find_important_words(movie1_idx, tfidf_matrix, words_dict))
+    movie2_words = set(find_important_words(movie2_idx, tfidf_matrix, words_dict))
+
+    common_words = movie1_words.intersection(movie2_words)
+
+
+    return list(common_words)[:top_n]
+
 def find_important_words(movie_idx, tfidf_matrix, words_dict, top_n=15):
     """Find important words for a movie based on TF-IDF scores"""
+
+
     movie_vector = tfidf_matrix[movie_idx].toarray().flatten()
 
     word_scores = []
@@ -33,6 +116,7 @@ def find_important_words(movie_idx, tfidf_matrix, words_dict, top_n=15):
     
     word_scores.sort(key=lambda x: x[1], reverse=True)
     return [word for word, _ in word_scores[:top_n]]
+
 
 def find_common_important_words(movie1_idx, movie2_idx, tfidf_matrix, words_dict, top_n=10):
     """Find common important words between two movies"""
@@ -79,9 +163,8 @@ def get_recommendations(movie_id, df, cosine_sim, movie_dict, words_dict, tfidf_
         similarity = sim_scores[i][1]
         overview = movie_row['overview'].iloc[0]
         
-        #common_words = find_common_important_words(movie_dict[movie_id], movie_idx, tfidf_matrix, words_dict)
-        common_words = []
-        
+        common_words = find_common_important_words(movie_dict[movie_id], movie_idx, tfidf_matrix, words_dict)
+
         recommendations.append({
             "id": rec_movie_id,
             "title": rec_movie_title,
@@ -183,8 +266,32 @@ def main():
                 movie_title = matches['title'].iloc[0]
                 print(f"Found movie: {movie_title}")
             
-                # Get recommendations
+            
                 results = get_recommendations(movie_id, df, cosine_sim, movie_dict, words_dict, tfidf_matrix)
+                print_recommendations(results)
+
+            else:
+                print(f"Found {len(matches)} movies:")
+                for i, (_, row) in enumerate(matches.iterrows(), 1):
+                    print(f"{i}. {row['title']}")
+                    
+                print("\nEnter the number of your selection:")
+               
+                selection = int(input("> ")) - 1
+                if 0 <= selection < len(matches):
+                    movie_id = matches['id'].iloc[selection]
+                    movie_title = matches['title'].iloc[selection]
+                    print(f"\nGetting recommendations for '{movie_title}'...")
+                    
+                    # Get recommendations
+                    results = get_recommendations(movie_id, df, cosine_sim, movie_dict, words_dict, tfidf_matrix)
+                    
+                    if "error" in results:
+                        print(f"Error: {results['error']}")
+                    else:
+                        print_recommendations(results)
+                else:
+                    print("Invalid selection.")
 
             
             
