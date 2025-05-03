@@ -149,6 +149,7 @@ def main():
     movie_dict_path = os.path.join(pickle_dir, 'movie_dict.pkl')
     words_dict_path = os.path.join(pickle_dir, 'words_dict.pkl')
     matrix_path = os.path.join(pickle_dir, 'tfidf_matrix.pkl')
+    id_to_title_path = os.path.join(pickle_dir, 'id_to_title_dict.pkl')
 
     df = load_and_preprocess_data(csv_path)
     movie_dict, words_dict = create_dictionaries(df)
@@ -158,6 +159,7 @@ def main():
         count_matrix, doc_lengths, word_doc_counts, len(movie_dict))
 
     movie_dict, words_dict = create_dictionaries(df)
+    id_to_title_dict = dict(zip(df['id'], df['title']))
 
     # Build sparse count matrix
     count_matrix, doc_lengths, word_doc_counts = build_sparse_matrix(
@@ -178,6 +180,8 @@ def main():
     with open(matrix_path, 'wb') as f:
         pickle.dump(tfidf_matrix, f)
 
+    with open(id_to_title_path, 'wb') as f:
+        pickle.dump(id_to_title_dict, f)
     print("Data saved to pickles successfully")
 
 

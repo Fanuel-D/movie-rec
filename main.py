@@ -15,6 +15,7 @@ from collections import Counter
 from scipy.sparse import coo_matrix, csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 import os
+import editdistance
 
 
 HIGHLIGHT_COLORS = [
@@ -29,6 +30,57 @@ HIGHLIGHT_COLORS = [
 pickle_dir = './pickles'
 
 csv_path = 'movie.csv'
+
+
+# def edits1(word):
+#     "All edits that are one edit away from `word`."
+#     letters = 'abcdefghijklmnopqrstuvwxyz'
+#     splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+#     deletes = [L + R[1:] for L, R in splits if R]
+#     transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R) > 1]
+#     replaces = [L + c + R[1:] for L, R in splits if R for c in letters]
+#     inserts = [L + c + R for L, R in splits for c in letters]
+#     return set(deletes + transposes + replaces + inserts)
+
+
+# def edits2(word):
+#     "All edits that are two edits away from `word`."
+#     # return (e2 for e1 in edits1(word) for e2 in edits1(e1))
+#     lst = []
+#     for e1 in edits1(word):
+#         for e2 in edits1(e1):
+#             lst.append(e2)
+
+#     return lst
+
+
+def search_movie(title_query, df):
+    """Search for a movie by title (partial match)"""
+
+    title_query = title_query.lower()
+    # print(title_query)
+    matches = df[df['title'].str.lower().str.contains(title_query, na=False)]
+    print("in here")
+    return matches[['id', 'title']]
+
+
+def search_movie2(title_query, df):
+    """Search for a movie by title (partial match)"""
+
+    title_query = title_query.lower()
+
+    df_list = []
+    matches1 = df[df['title'].str.lower().str.contains(title_query, na=False)]
+    for word in edits:
+        df_list.append(
+            df[df['title'].str.lower().str.contains(word, na=False)])
+
+    df_list.append(matches1)
+
+    matches = pd.concat(df_list)
+    # print(matches, type(matches))
+    print("in here")
+    return matches[['id', 'title']]
 
 
 def get_title_from_id(movie_id, df):
@@ -187,13 +239,29 @@ def get_recommendations(movie_id, df, cosine_sim, movie_dict, words_dict, tfidf_
     }
 
 
-def search_movie(title_query, df):
+def search_movie(title_query, df, id_to_tile):
     """Search for a movie by title (partial match)"""
 
     title_query = title_query.lower()
-    # print(title_query)
-    matches = df[df['title'].str.lower().str.contains(title_query, na=False)]
-    print("in here")
+
+    titles = id_to_tile.values()
+    possible_matches = []
+    for title in titles:
+        edit_dist = editdistance.eval(str(title), title_query)
+        if edit_dist < 6:
+            possible_matches.append((title, edit_dist))
+
+    sorted_possible_matches_list = list(
+        sorted(possible_matches, key=lambda x: x[1]))[:20]
+
+    possible_titles = [title for title, dist in sorted_possible_matches_list]
+
+    df_list = [
+        df[df['title'].str.lower().str.contains(poss_title.lower(), na=False)]
+        for poss_title in possible_titles
+    ]
+    matches = pd.concat(df_list, ignore_index=True).drop_duplicates()
+
     return matches[['id', 'title']]
 
 
@@ -219,6 +287,7 @@ def main():
     movie_dict_path = os.path.join(pickle_dir, 'movie_dict.pkl')
     words_dict_path = os.path.join(pickle_dir, 'words_dict.pkl')
     matrix_path = os.path.join(pickle_dir, 'tfidf_matrix.pkl')
+    id_to_tile_path = os.path.join(pickle_dir, 'id_to_title_dict.pkl')
 
     with open("df.pkl", 'rb') as f:
         df = pickle.load(f)
@@ -233,6 +302,9 @@ def main():
 
     with open(matrix_path, 'rb') as f:
         tfidf_matrix = pickle.load(f)
+
+    with open(id_to_tile_path, 'rb') as f:
+        id_to_title = pickle.load(f)
 
     print("done loading all pickles")
     id_to_movie = inverse_dict(movie_dict)
@@ -257,7 +329,7 @@ def main():
                 continue
 
             print(f"\nSearching for movies containing '{user_input}'...")
-            matches = search_movie(user_input, df)
+            matches = search_movie(user_input, df, id_to_title)
 
             if len(matches) == 0:
                 print(f"No movies found with title containing '{user_input}'")
