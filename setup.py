@@ -9,10 +9,14 @@ from scipy.sparse import csr_matrix, coo_matrix
 import re
 import nltk
 import os
-# nltk.download('punkt_tab')
 
 
 csv_path = 'movie.csv'
+pickle_dir = './pickles'
+glove_path = '/data/cs91r-s25/glove/glove.6B.50d.pkl'
+EMB_DIM = 50                        # dimensionality of the GloVe vectors
+alpha = 0.1                         # TF‑IDF propagation weight
+threshold = 0.8                     # cosine‑sim threshold for synonym links
 
 
 def compute_tfidf_from_counts(count_matrix, doc_lengths, word_doc_counts, num_docs):
@@ -64,13 +68,10 @@ def build_sparse_matrix(df, movie_dict, words_dict):
     rows = []
     cols = []
 
-    # token counts for each overview for TF-IDF calculation later
     num_movies = max(movie_dict.values()) + 1
-    # num_movies = max(movie_dict.values())
     doc_lengths = np.zeros(num_movies)
     word_doc_counts = np.zeros(len(words_dict))
 
-    # each mvie
     for idx, row in df.iterrows():
         movie_id = row['id']
         overview = row['overview']
@@ -124,6 +125,43 @@ def clean_text(text):
     return tokens
 
 
+def build_and_pickle_similarity(tfidf, words_dict):
+    """Create a sparse word-similarity matrix based on GloVe and save it."""
+    print('building word-embedding similarity graph ...')
+
+    # load GloVe matrix
+    with open(glove_path, 'rb') as f:
+        df_embed: pd.DataFrame = pickle.load(
+            f)   # index = word, columns = dims
+
+    # create lookup: dense embedding matrix
+    V = len(words_dict)
+    W_embed = np.zeros((V, EMB_DIM), dtype='float32')
+
+    for word, idx in words_dict.items():
+        if word in df_embed.index:
+            W_embed[idx] = df_embed.loc[word].values.astype('float32')
+
+    # cosine similarity & thresholding
+    sim_mat = cosine_similarity(W_embed, W_embed)
+    sim_mat[sim_mat < threshold] = 0.0
+    sim_csr = csr_matrix(sim_mat)
+
+    out_path = os.path.join(pickle_dir, 'sim_csr.pkl')
+    with open(out_path, 'wb') as f:
+        pickle.dump(sim_csr, f)
+    print(f'similarity graph pickled : {out_path}')
+
+    print('propagating TF-IDF via similarity graph ...')
+    propagated = tfidf.dot(sim_csr)
+    enhanced = tfidf.multiply(1-alpha) + propagated.multiply(alpha)
+
+    out_path = os.path.join(pickle_dir, 'enhanced_tfidf.pkl')
+    with open(out_path, 'wb') as f:
+        pickle.dump(enhanced, f)
+    print(f'enhanced TF-IDF saved: {out_path}')
+
+
 def load_and_preprocess_data(csv_path):
     """Load movie data and preprocess it"""
 
@@ -131,9 +169,7 @@ def load_and_preprocess_data(csv_path):
     title_col = 'original_title'
 
     df['title'] = df[title_col]
-
     df = df[df['overview'].notna()]
-
     print(f"Length of df is {len(df)}")
 
     f = open("df.pkl", 'wb')
@@ -182,6 +218,11 @@ def main():
 
     with open(id_to_title_path, 'wb') as f:
         pickle.dump(id_to_title_dict, f)
+
+    words_dict_path = os.path.join(pickle_dir, 'words_dict.pkl')
+    with open(words_dict_path, 'rb') as f:
+        words_dict = pickle.load(f)
+    build_and_pickle_similarity(tfidf_matrix, words_dict)
     print("Data saved to pickles successfully")
 
 
