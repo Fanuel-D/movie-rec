@@ -247,7 +247,10 @@ def main():
                 print_recommendations(results)
             else:
                 print(f"Found {len(matches)} movies:")
+                print(f"Printing at most 10 or less matches ")
                 for i, (_, row) in enumerate(matches.iterrows(), 1):
+                    if i == 11:
+                        break
                     print(f"{i}. {row['title']}")
 
                 print("\nEnter the number of your selection:")
