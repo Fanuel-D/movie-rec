@@ -201,9 +201,6 @@ def get_recommendations(
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['1', '2', '3'])
-    args = parser.parse_args()
 
     # Load data
     df = pickle.load(open('df.pkl', 'rb'))
@@ -220,56 +217,56 @@ def main():
     inv_map = inverse_dict(movie_dict)
     print("Loaded data and TF-IDF")
 
-    if args.mode == '1':
-        print("\n" + "="*50)
-        print("Welcome to Fanuel and Will's Movie Recommendation System!")
-        print("="*50)
-        print("This system finds similar movies based on overview content.")
-        print("Important words that are common between movies are highlighted with colors. There are the words that allow us to find a similarity between movies.")
+   
+    print("\n" + "="*50)
+    print("Welcome to Fanuel and Will's Movie Recommendation System!")
+    print("="*50)
+    print("This system finds similar movies based on overview content.")
+    print("Important words that are common between movies are highlighted with colors. There are the words that allow us to find a similarity between movies.")
 
-        while True:
-            inp = input("\nEnter a movie title (or 'q' to quit): ")
-            if inp.lower() == 'q':
-                break
-            if not inp.strip():
-                continue
-            matches = search_movie(inp, df, id_to_title)
-            if matches.empty:
-                print(f"No matches for '{inp}'")
-                continue
-            if len(matches) == 1:
-                movie_id = matches['id'].iloc[0]
-                movie_title = matches['title'].iloc[0]
-                print(f"Found movie: {movie_title}")
+    while True:
+        inp = input("\nEnter a movie title (or 'q' to quit): ")
+        if inp.lower() == 'q':
+            break
+        if not inp.strip():
+            continue
+        matches = search_movie(inp, df, id_to_title)
+        if matches.empty:
+            print(f"No matches for '{inp}'")
+            continue
+        if len(matches) == 1:
+            movie_id = matches['id'].iloc[0]
+            movie_title = matches['title'].iloc[0]
+            print(f"Found movie: {movie_title}")
 
+            results = get_recommendations(
+                movie_id, df, enhanced, movie_dict, words_dict, tfidf)
+            print_recommendations(results)
+        else:
+            print(f"Found {len(matches)} movies:")
+            print(f"Printing at most 10 or less matches ")
+            for i, (_, row) in enumerate(matches.iterrows(), 1):
+                if i == 11:
+                    break
+                print(f"{i}. {row['title']}")
+
+            print("\nEnter the number of your selection:")
+
+            selection = int(input("> ")) - 1
+            if 0 <= selection < len(matches):
+                movie_id = matches['id'].iloc[selection]
+                movie_title = matches['title'].iloc[selection]
+                print(f"\nGetting recommendations for '{movie_title}'...")
+
+                # Get recommendations
                 results = get_recommendations(
                     movie_id, df, enhanced, movie_dict, words_dict, tfidf)
-                print_recommendations(results)
-            else:
-                print(f"Found {len(matches)} movies:")
-                print(f"Printing at most 10 or less matches ")
-                for i, (_, row) in enumerate(matches.iterrows(), 1):
-                    if i == 11:
-                        break
-                    print(f"{i}. {row['title']}")
-
-                print("\nEnter the number of your selection:")
-
-                selection = int(input("> ")) - 1
-                if 0 <= selection < len(matches):
-                    movie_id = matches['id'].iloc[selection]
-                    movie_title = matches['title'].iloc[selection]
-                    print(f"\nGetting recommendations for '{movie_title}'...")
-
-                    # Get recommendations
-                    results = get_recommendations(
-                        movie_id, df, enhanced, movie_dict, words_dict, tfidf)
-                    if "error" in results:
-                        print(f"Error: {results['error']}")
-                    else:
-                        print_recommendations(results)
+                if "error" in results:
+                    print(f"Error: {results['error']}")
                 else:
-                    print("Invalid selection.")
+                    print_recommendations(results)
+            else:
+                print("Invalid selection.")
 
 
 if __name__ == '__main__':
