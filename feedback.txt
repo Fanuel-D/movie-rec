@@ -1,0 +1,10 @@
+# Lab 9: Final Project (36/36)
+
+- Proposal (4/4): Description of what and why.
+- WIP (4/4): Work-in-Progress demonstration.
+- Ambition (4/4): Ambition of project idea and implementation.
+- Creativity (4/4): Creativity of the project idea and implementation.
+- Execution (8/8): How much of your vision was accomplished successfully.
+- Style (4/4): Coding design, implementation, and documentation.
+- Write-up (8/8): Completeness & clarity.
+
