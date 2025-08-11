@@ -115,7 +115,7 @@ Tables 1 and 2 list the five highest-scoring recommendations for the two test qu
 | 4 | The Disappearance of Alice Creed | 0.16 |
 | 5 | 3 Nights in the Desert | 0.16 |
 
-**Franchise awareness.** For `Shrek Forever After` the two direct sequels head the list, each with a similarity score above 0.31. Their overviews share the character names (Shrek, Fiona) and setting (Far Far Away), all colour-highlighted in the CLI. This shows that the model captures word overlap and ranks near-duplicates appropriately.
+**Franchise awareness.** For `Shrek Forever After` the two direct sequels head the list, each with a similarity score above 0.31. Their overviews share the character names (Shrek, Fiona) and setting (Far Far Away), all colour-highlighted in the CLI. This shows that the model captures word overlap and ranks near-duplicates appropriately
 
 **Semantic recall beyond surface words.** More interesting are the non-franchise hits:
 
